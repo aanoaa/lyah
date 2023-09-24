@@ -1,0 +1,6 @@
+# dmz -> q
+abc-opx,abc-ipx,8080
+# q -> secure
+abc-ipx,abc-app,8080
+# q -> secure; undefined
+abc-ipx,abc-prx,8080
