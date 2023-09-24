@@ -1,4 +1,4 @@
-module Lib
+module Lib ()
 where
 
 someFunc :: IO ()
