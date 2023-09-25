@@ -44,11 +44,23 @@ listGroup s = [f1, f2, f3, f4, f5, f6]
     f5 = concat [f2, "-", f3]
     f6 = concat [f1, "-", f2, "-", f3]
 
--- | split lines then concat.
--- >>> split'concat ["foo\n","bar\n"]
--- ["foo","bar"]
-split'concat :: [String] -> [String]
-split'concat = foldr ((<>) . lines) []
+-- | split lines then concat into a list.
+-- >>> stripLn ["foo\nbar\n","baz\n"]
+-- ["foo","bar","baz"]
+stripLn :: [String] -> [String]
+stripLn = foldr ((<>) . lines) []
+
+-- >>> groupFromPolicy ["# dmz -> q","abc-opx,abc-ipx,8080","# q -> secure","abc-ipx,abc-app,8080","# q -> secure; undefined","abc-ipx,abc-prx,8080"]
+-- ["abc-opx","abc-ipx","abc-ipx","abc-app","abc-ipx","abc-prx"]
+groupFromPolicy :: [String] -> [String]
+groupFromPolicy xs = do
+  s <- filter (not . isPrefixOf "#") xs
+  [f1 s, f2 s]
+  where
+    pick = takeWhile (/= ',')
+    skip = drop 1 . dropWhile (/= ',')
+    f1 = pick
+    f2 = pick . skip
 
 -- | find <dirpath> -name 'host.*.csv'
 -- | grouping by '-' separator
@@ -58,11 +70,14 @@ main dirpath = do
   list <- listDirectory dirpath
   let basename = filter isHostFile list
   let files = [dirpath <> "/" <> f | f <- basename]
-  lines' <- mapM readFile files
-  let contents = split'concat lines'
-  let cols = fstCols contents
-  print cols
-  let a = listGroup <$> cols
-  print a
+  s <- mapM readFile files
+  let cols = fstCols (stripLn s)
+  let g = concatMap listGroup cols
 
-  print cols
+  p <- readFile (dirpath <> "/policy.csv")
+  let policy = lines p
+  let pg = groupFromPolicy policy
+
+  let r = (`elem` g) <$> pg
+  let ok = if False `elem` r then "Not OK" else "OK"
+  print ok
