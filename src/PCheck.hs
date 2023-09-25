@@ -27,31 +27,28 @@ fstCols lines =
       )
       lines
 
--- | split by '-'
--- >>> words' "foo-bar-baz"
--- ["foo","bar","baz"]
-words' :: String -> [String]
-words' s = case dropWhile (== '-') s of
-  "" -> []
-  s' -> w : words' s''
-    where
-      (w, s'') = break (== '-') s'
-
 -- | list group by given string.
 -- | group is the value separated by the '-' character
 -- >>> listGroup "prod-abc-opx01"
 -- ["prod","abc","opx","prod-abc","abc-opx","prod-abc-opx"]
 listGroup :: String -> [String]
 listGroup ""   = []
-listGroup name
-  | tokenl /= 3 = [name]
-  | otherwise = rename <> [x <> "-" <> y | (x, y) <- zip rename (tail rename)] <> [replace ' ' '-' (unwords rename)]
+listGroup s = [f1, f2, f3, f4, f5, f6]
   where
-    token = words' name
-    tokenl = length token
-    -- 마지막 요소에서 숫자를 뗀다. baz01 -> baz
-    rename = [if i /= tokenl then x else [c | c <- x, c `notElem` ['0' .. '9']] | (i, x) <- zip [1 ..] token]
-    replace a b = map (\c -> if c == a then b else c)
+    pick = takeWhile (/= '-')
+    skip = drop 1 . dropWhile (/= '-')
+    f1 = pick s
+    f2 = pick . skip $ s
+    f3 = takeWhile (`notElem` ['0' .. '9']) . pick . skip . skip $ s
+    f4 = concat [f1, "-", f2]
+    f5 = concat [f2, "-", f3]
+    f6 = concat [f1, "-", f2, "-", f3]
+
+-- | split lines then concat.
+-- >>> split'concat ["foo\n","bar\n"]
+-- ["foo","bar"]
+split'concat :: [String] -> [String]
+split'concat = foldr ((<>) . lines) []
 
 -- | find <dirpath> -name 'host.*.csv'
 -- | grouping by '-' separator
@@ -61,9 +58,11 @@ main dirpath = do
   list <- listDirectory dirpath
   let basename = filter isHostFile list
   let files = [dirpath <> "/" <> f | f <- basename]
-  -- files 를 돌면서 lines <$> readFile 의 each line 에 대해 listGroup 을 hash table 에 넣고..
-  -- policy.csv 의 fst, snd col 의 elem 가 존재하는지 여부를 check.
-  -- files 에 대해 readFile 하면 IO 가 나오는데 이걸 map 안에서 핸들링 하는 방법을 모르겠음.
+  lines' <- mapM readFile files
+  let contents = split'concat lines'
+  let cols = fstCols contents
+  print cols
+  let a = listGroup <$> cols
+  print a
 
-  content <- lines <$> readFile (head files)
-  print content
+  print cols
